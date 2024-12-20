@@ -71,11 +71,11 @@ export function ImportCollectionDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.file || !formData.name) {
+    if (!formData.file) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Please select a file and enter a collection name",
+        description: "Please select a file",
       });
       return;
     }
@@ -86,16 +86,19 @@ export function ImportCollectionDialog({
       const fileContent = await formData.file.text();
       const jsonData = JSON.parse(fileContent);
 
-      // Batch import logic
-      let batchSize = 100; // Process 100 bookmarks per batch
+      // 使用文件中的建议名称和描述
+      const collectionName = jsonData.metadata?.suggestedName || formData.name;
+      const collectionDescription = jsonData.metadata?.description || formData.description;
 
+      // Batch import logic
+      let batchSize = 100;
       let importedCollectionId = null;
       let folderMap: { [key: string]: string }[] = [];
 
       const startTime = Date.now();
 
       if (jsonData.metadata?.exportedFrom === "PintreePro") {
-        batchSize = 50
+        batchSize = 50;
         // Import folders first
         const folderLevels = Object.keys(jsonData.folders)
           .map(Number)
@@ -106,11 +109,11 @@ export function ImportCollectionDialog({
 
           for (const folderBatch of folderBatches) {
             const folderRequestData = {
-              name: formData.name,
-              description: formData.description,
+              name: collectionName,
+              description: collectionDescription,
               folders: folderBatch,
-              collectionId: importedCollectionId, // Will be null for the first batch
-              folderMap: folderMap, // Pass existing folder mapping
+              collectionId: importedCollectionId,
+              folderMap: folderMap,
             };
 
             const folderResponse: any = await fetch(
@@ -140,12 +143,6 @@ export function ImportCollectionDialog({
               importedCollectionId = folderData.collectionId;
             }
             folderMap = folderData.insideFolderMap;
-
-            // Show folder import progress
-            toast({
-              title: "Folder Import Progress",
-              description: `Importing folders at level ${level}: Batch ${folderBatches.indexOf(folderBatch) + 1}/${folderBatches.length}`,
-            });
           }
         }
 
@@ -201,8 +198,8 @@ export function ImportCollectionDialog({
           const batchBookmarks = flattenedBookmarks.slice(i, i + batchSize);
 
           const requestData = {
-            name: formData.name,
-            description: formData.description,
+            name: collectionName,
+            description: collectionDescription,
             bookmarks: batchBookmarks,
             collectionId: importedCollectionId, // Append to the same collection in subsequent batches
             folderMap: folderMap,
@@ -278,7 +275,7 @@ export function ImportCollectionDialog({
       toast({
         title: "Import Successful",
         description: `Collection "${
-          formData.name
+          collectionName
         }" imported successfully in ${totalImportTime.toFixed(2)}s`,
       });
 
@@ -286,14 +283,11 @@ export function ImportCollectionDialog({
         onSuccess();
       }
     } catch (error) {
-      console.error("Failed to import bookmark collection:", error);
+      console.error("Import failed:", error);
       toast({
         variant: "destructive",
         title: "Import Failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "An error occurred while importing the bookmark collection",
+        description: error instanceof Error ? error.message : "An error occurred during import",
       });
     } finally {
       setLoading(false);

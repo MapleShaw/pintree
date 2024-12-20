@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "书签导出工具",
+  "version": "1.0",
+  "description": "选择性导出 Chrome 书签为 JSON 格式，包含网站图标",
+  "permissions": [
+    "bookmarks",
+    "downloads"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
